@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">📋</span>
+        <span class="logo-text">Changelog Generator</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-sm" id="btnClear" title="Clear all">Clear All</button>
+        <button class="btn btn-ghost btn-sm" id="btnCopy">Copy Markdown</button>
+        <button class="btn btn-primary btn-sm" id="btnDownload">⬇ Download CHANGELOG.md</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- Left Panel: Input -->
+    <aside class="panel panel-input">
+
+      <!-- Project Info -->
+      <div class="panel-section">
+        <div class="panel-title">Project Info</div>
+        <div class="form-group">
+          <label>Project Name</label>
+          <input type="text" id="projectName" placeholder="my-awesome-project" />
+        </div>
+        <div class="form-group">
+          <label>Repository URL <span class="optional">(optional)</span></label>
+          <input type="url" id="repoUrl" placeholder="https://github.com/user/repo" />
+        </div>
+      </div>
+
+      <!-- Add Release -->
+      <div class="panel-section">
+        <div class="panel-title">Add Release</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Version *</label>
+            <input type="text" id="releaseVersion" placeholder="1.0.0" />
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="releaseDate" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Release Type</label>
+          <div class="tag-row" id="releaseTagRow">
+            <button class="tag-btn active" data-rel="stable">Stable</button>
+            <button class="tag-btn" data-rel="pre">Pre-release</button>
+            <button class="tag-btn" data-rel="yanked">Yanked</button>
+          </div>
+        </div>
+        <button class="btn btn-primary full-width" id="btnAddRelease">+ Add Release</button>
+      </div>
+
+      <!-- Paste Git Log -->
+      <div class="panel-section">
+        <div class="panel-title">Parse Git Log</div>
+        <p class="hint">Paste output of:<br><code>git log --oneline --no-merges</code></p>
+        <textarea id="gitLogInput" rows="7" placeholder="abc1234 feat: add dark mode&#10;def5678 fix: resolve login crash&#10;ghi9012 docs: update README&#10;jkl3456 chore: bump dependencies"></textarea>
+        <div class="form-row mt-8">
+          <div class="form-group">
+            <label>Add to Release</label>
+            <select id="parseTargetRelease">
+              <option value="">— select release —</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-success full-width" id="btnParseLog">Parse &amp; Add</button>
+          </div>
+        </div>
+        <div id="parseError" class="parse-error hidden"></div>
+      </div>
+
+      <!-- Add Single Entry -->
+      <div class="panel-section">
+        <div class="panel-title">Add Entry Manually</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Release</label>
+            <select id="entryTargetRelease">
+              <option value="">— select —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="entryType">
+              <option value="Added">Added</option>
+              <option value="Fixed">Fixed</option>
+              <option value="Changed">Changed</option>
+              <option value="Removed">Removed</option>
+              <option value="Deprecated">Deprecated</option>
+              <option value="Security">Security</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description *</label>
+          <input type="text" id="entryDesc" placeholder="Describe the change..." />
+        </div>
+        <div class="form-group">
+          <label>Commit Hash <span class="optional">(optional)</span></label>
+          <input type="text" id="entryHash" placeholder="abc1234" maxlength="40" />
+        </div>
+        <button class="btn btn-primary full-width" id="btnAddEntry">+ Add Entry</button>
+      </div>
+
+    </aside>
+
+    <!-- Right Panel: Preview & Releases -->
+    <main class="panel panel-main">
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="releases">Releases</button>
+        <button class="tab-btn" data-tab="preview">Markdown Preview</button>
+        <button class="tab-btn" data-tab="raw">Raw Markdown</button>
+      </div>
+
+      <!-- Releases Tab -->
+      <div class="tab-content active" id="tab-releases">
+        <div id="releaseList">
+          <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <p>No releases yet.<br>Add a release version to get started!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Tab -->
+      <div class="tab-content" id="tab-preview">
+        <div class="preview-body" id="previewBody"></div>
+      </div>
+
+      <!-- Raw Markdown Tab -->
+      <div class="tab-content" id="tab-raw">
+        <div class="raw-wrap">
+          <pre id="rawOutput"></pre>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Edit Entry Modal -->
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Edit Entry</h2>
+        <button class="modal-close" id="closeEdit">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="editType">
+            <option value="Added">Added</option>
+            <option value="Fixed">Fixed</option>
+            <option value="Changed">Changed</option>
+            <option value="Removed">Removed</option>
+            <option value="Deprecated">Deprecated</option>
+            <option value="Security">Security</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="editDesc" />
+        </div>
+        <div class="form-group">
+          <label>Commit Hash</label>
+          <input type="text" id="editHash" maxlength="40" />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" id="cancelEdit">Cancel</button>
+          <button class="btn btn-primary" id="confirmEdit">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
